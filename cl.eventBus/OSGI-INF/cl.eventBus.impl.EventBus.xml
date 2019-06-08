@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0" name="cl.eventBus.impl.EventBus">
+   <service>
+      <provide interface="cl.eventBus.api.IEventBus"/>
+   </service>
+   <reference cardinality="1..1" field="eventBroker" interface="org.eclipse.e4.core.services.events.IEventBroker" name="eventBroker"/>
+   <implementation class="cl.eventBus.impl.EventBus"/>
+</scr:component>

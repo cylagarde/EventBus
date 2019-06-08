@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CL Event Bus
+Bundle-SymbolicName: cl.eventBus;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: cl.eventBus.Activator
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.osgi.services,
+ org.eclipse.e4.core.services,
+ org.eclipse.e4.core.contexts
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: cl.eventBus
+Bundle-ActivationPolicy: lazy
+Export-Package: cl.eventBus.api
+Bundle-Vendor: CL
+Service-Component: OSGI-INF/cl.eventBus.impl.EventBus.xml

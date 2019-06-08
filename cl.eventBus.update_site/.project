@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>cl.eventBus.update_site</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.pde.UpdateSiteBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.pde.UpdateSiteNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>site.xml</name>
+			<type>1</type>
+			<locationURI>PROJECT_LOC/category.xml</locationURI>
+		</link>
+	</linkedResources>
+</projectDescription>
