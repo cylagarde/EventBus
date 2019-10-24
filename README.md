@@ -1,5 +1,5 @@
 # EventBus
-RCP Event bus v1.0.0 allows to post/send a event and receive some responses.<br>
+RCP Event bus v1.0.0 allows to post/send an event and receive some responses.<br>
 Implementation use RCP EventBroker.
 
 ## Install
@@ -40,19 +40,28 @@ eventBus.send(MY_EVENT_DESCRIPTOR, instance);
 EventDescriptor<String> RESPONSE_EVENT_DESCRIPTOR = new EventDescriptor<>("response/topic", String.class);
 RequestEventDescriptor<YourClass, String> REQUEST_EVENT_DESCRIPTOR = new RequestEventDescriptor<>(MY_EVENT_DESCRIPTOR, RESPONSE_EVENT_DESCRIPTOR);
 
-Function<YourClass, String> responseFunction = instance -> "OK";
+Function<YourClass, String> responseFunction = instance -> {
+	if (valid(instance))
+		return "OK";
+	return "KO";
+};
 eventBus.subscribe(REQUEST_EVENT_DESCRIPTOR, responseFunction);
 ```
 
 ## Post/Send a request and wait responses with timeout
 ```
 Consumer<CompletableFuture<List<String>>> consumer = completableFuture ->
-      completableFuture.handle((responses, exception) -> {
-      		...
-      });
+  completableFuture.handle((responses, exception) -> {
+	 if (exception != null)
+	 	 treat exception
+	 String firstResponse = responses.get(0);
+	 if ("OK".equals(firstResponse))
+	 	  treat validResponse
+	 treat invalidResponse
+  });
 eventBus.postRequest(REQUEST_EVENT_DESCRIPTOR, instance,
         10, TimeUnit.SECONDS,
-        (oneResponse, exception) -> exception != null,
+        (oneResponse, exception) -> true, // stop if receive a response or an exception from user or time out
         consumer);
 eventBus.sendRequest(...);
 ```
