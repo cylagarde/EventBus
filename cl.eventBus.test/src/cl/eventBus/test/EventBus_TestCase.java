@@ -97,14 +97,7 @@ public class EventBus_TestCase
       eventBus.post(eventDescriptor, "data");
 
       assertFalse(atomicBoolean.get());
-
-      try
-      {
-        Thread.sleep(250);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(250);
       assertTrue(atomicBoolean.get());
     }
     finally
@@ -551,13 +544,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      try
-      {
-        Thread.sleep(delay + 50);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(delay + 50);
 
       // check
       String reply1 = reply1Reference.get();
@@ -630,13 +617,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      try
-      {
-        Thread.sleep(delay + 50);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(delay + 50);
 
       // check
       String reply1 = reply1Reference.get();
@@ -711,13 +692,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      try
-      {
-        Thread.sleep(delay + 50);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(delay + 50);
 
       // check
       List<?> list = listReference.get();
@@ -787,13 +762,7 @@ public class EventBus_TestCase
       assertNull(reply1Reference.get());
       assertNull(listReference.get());
 
-      try
-      {
-        Thread.sleep(2 * delay + 50);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(2 * delay + 50);
 
       // check
       List<?> list = listReference.get();
@@ -810,13 +779,7 @@ public class EventBus_TestCase
       time = System.currentTimeMillis() - time;
       assertTime(time, 0);
 
-      try
-      {
-        Thread.sleep(delay + 50);
-      }
-      catch(InterruptedException e)
-      {
-      }
+      pause(delay + 50);
 
       // check
       list = listReference.get();
