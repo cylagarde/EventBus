@@ -8,7 +8,7 @@ https://raw.githubusercontent.com/cylagarde/EventBus/master/cl.eventBus.update_s
 ```
 
 ## How to inject eventBus
-```
+```java
 import cl.eventBus.api.IEventBus;
 
 @Inject
@@ -16,18 +16,18 @@ IEventBus eventBus;
 ```
 
 ## Define EventDescriptor
-```
+```java
 EventDescriptor<YourClass> MY_EVENT_DESCRIPTOR = new EventDescriptor<>("YourClass/topic", YourClass.class);
 ```
 
 ## Subscribe/Unsubscribe to EventDescriptor
-```
+```java
 Consumer<YourClass> consumer = instance -> System.out.println("receive "+instance);
 eventBus.subscribe(MY_EVENT_DESCRIPTOR, consumer);
 ```
 
 ## Post/Send event to eventBus
-```
+```java
 YourClass instance = ...
 // post: call not blocked
 eventBus.post(MY_EVENT_DESCRIPTOR, instance);
@@ -36,7 +36,7 @@ eventBus.send(MY_EVENT_DESCRIPTOR, instance);
 ```
 
 ## Subscribe/Unsubscribe to request
-```
+```java
 EventDescriptor<String> RESPONSE_EVENT_DESCRIPTOR = new EventDescriptor<>("response/topic", String.class);
 RequestEventDescriptor<YourClass, String> REQUEST_EVENT_DESCRIPTOR = new RequestEventDescriptor<>(MY_EVENT_DESCRIPTOR, RESPONSE_EVENT_DESCRIPTOR);
 
@@ -49,7 +49,7 @@ eventBus.subscribe(REQUEST_EVENT_DESCRIPTOR, responseFunction);
 ```
 
 ## Post/Send a request and wait responses with timeout
-```
+```java
 Consumer<CompletableFuture<List<String>>> consumer = completableFuture ->
   completableFuture.handle((responses, exception) -> {
 	 if (exception != null)
