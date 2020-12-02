@@ -81,7 +81,7 @@ public interface IEventBus
   <E, R> void postRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
     BiPredicate<? super R, Throwable> stopIf,
-    Consumer<? super CompletableFuture<List<R>>> consumer);
+    Consumer<CompletableFuture<List<? extends R>>> consumer);
 
   /**
    * Send an event and receive responses
@@ -96,7 +96,7 @@ public interface IEventBus
   <E, R> void sendRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
     BiPredicate<? super R, Throwable> stopIf,
-    Consumer<? super CompletableFuture<List<R>>> consumer);
+    Consumer<CompletableFuture<List<? extends R>>> consumer);
 
   // just for debug
   void dump();

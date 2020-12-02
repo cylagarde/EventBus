@@ -1,5 +1,6 @@
 package cl.eventBus.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -232,9 +233,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -261,9 +262,9 @@ public class EventBus_TestCase
       String reply1 = reply1Reference.get();
       String reply2 = reply2Reference.get();
 
-      List<?> list = listReference.get();
+      List<? extends String> list = listReference.get();
       assertNotNull(list);
-      assertTime(1, list.size());
+      assertEquals(1, list.size());
       assertTrue(list.contains(reply1) || list.contains(reply2));
       assertNull(exceptionReference.get());
     }
@@ -300,9 +301,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -332,7 +333,7 @@ public class EventBus_TestCase
 
       List<?> list = listReference.get();
       assertNotNull(list);
-      assertTime(2, list.size());
+      assertEquals(2, list.size());
       assertTrue(list.contains(reply1));
       assertTrue(list.contains(reply2));
       assertNull(exceptionReference.get());
@@ -369,9 +370,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -434,9 +435,9 @@ public class EventBus_TestCase
       throw new SpecialException();
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -461,7 +462,7 @@ public class EventBus_TestCase
       // check
       List<?> list = listReference.get();
       assertNotNull(list);
-      assertTime(1, list.size());
+      assertEquals(1, list.size());
       assertNull(exceptionReference.get());
 
       // init
@@ -515,9 +516,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -552,7 +553,7 @@ public class EventBus_TestCase
 
       List<?> list = listReference.get();
       assertNotNull(list);
-      assertTime(1, list.size());
+      assertEquals(1, list.size());
       assertTrue(list.contains(reply1) || list.contains(reply2));
       assertNull(exceptionReference.get());
     }
@@ -589,9 +590,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -627,7 +628,7 @@ public class EventBus_TestCase
 
       List<?> list = listReference.get();
       assertNotNull(list);
-      assertTime(2, list.size());
+      assertEquals(2, list.size());
       assertTrue(list.contains(reply1));
       assertTrue(list.contains(reply2));
       assertNull(exceptionReference.get());
@@ -664,9 +665,9 @@ public class EventBus_TestCase
       return reply;
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -735,9 +736,9 @@ public class EventBus_TestCase
       throw new SpecialException();
     };
 
-    AtomicReference<List<String>> listReference = new AtomicReference<>();
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
-    Consumer<CompletableFuture<List<String>>> consumer = cf -> {
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
       cf = cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
@@ -767,7 +768,7 @@ public class EventBus_TestCase
       // check
       List<?> list = listReference.get();
       assertNotNull(list);
-      assertTime(1, list.size());
+      assertEquals(1, list.size());
       assertNull(exceptionReference.get());
 
       // init

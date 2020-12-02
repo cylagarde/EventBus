@@ -264,7 +264,7 @@ public class EventBus implements IEventBus
   public <E, R> void postRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
     BiPredicate<? super R, Throwable> stopIf,
-    Consumer<? super CompletableFuture<List<R>>> consumer)
+    Consumer<CompletableFuture<List<? extends R>>> consumer)
   {
     ReceiveResponsesConsumer<R> responseConsumer = new ReceiveResponsesConsumer<>(requestEventDescriptor, timeout, timeUnit, stopIf, consumer);
     responseConsumerSet.add(responseConsumer);
@@ -276,7 +276,7 @@ public class EventBus implements IEventBus
   public <E, R> void sendRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
     BiPredicate<? super R, Throwable> stopIf,
-    Consumer<? super CompletableFuture<List<R>>> consumer)
+    Consumer<CompletableFuture<List<? extends R>>> consumer)
   {
     // check
     checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
@@ -314,7 +314,7 @@ public class EventBus implements IEventBus
    */
   private final class ReceiveResponsesConsumer<R> implements Consumer<R>
   {
-    private final CompletableFuture<List<R>> resultsCompletableFuture = new CompletableFuture<>();
+    private final CompletableFuture<List<? extends R>> resultsCompletableFuture = new CompletableFuture<>();
     private final CompletableFuture<Object> waitingCompletableFuture = new CompletableFuture<>();
     private final List<R> responses = new LinkedList<>();
     private final RequestEventDescriptor<?, ? extends R> requestEventDescriptor;
@@ -328,7 +328,7 @@ public class EventBus implements IEventBus
     private ReceiveResponsesConsumer(RequestEventDescriptor<?, ? extends R> requestEventDescriptor,
       long timeout, TimeUnit timeUnit,
       BiPredicate<? super R, Throwable> stopIf,
-      Consumer<? super CompletableFuture<List<R>>> consumer)
+      Consumer<CompletableFuture<List<? extends R>>> consumer)
     {
       Objects.requireNonNull(requestEventDescriptor, "requestEventDescriptor is null");
       Objects.requireNonNull(timeUnit, "timeUnit is null");
