@@ -30,6 +30,7 @@ import cl.eventBus.api.RequestEventDescriptor;
 /**
  * The class <b>EventBus_TestCase</b> allows to.<br>
  */
+@SuppressWarnings("static-method")
 public class EventBus_TestCase
 {
   static IEventBus eventBus;
@@ -209,6 +210,39 @@ public class EventBus_TestCase
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Test
+  public void test_sendRequest_waiting_no_response()
+  {
+    EventDescriptor<String> askEventDescriptor = new EventDescriptor<>("a/request", String.class);
+    EventDescriptor<String> replyEventDescriptor = new EventDescriptor<>("a/reply", String.class);
+    RequestEventDescriptor<String, String> requestEventDescriptor = new RequestEventDescriptor<>(askEventDescriptor, replyEventDescriptor);
+
+    int delay = 20;
+
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
+    AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
+      cf.handle((list, th) -> {
+        if (list != null)
+          listReference.set(list);
+        else
+          exceptionReference.set(th);
+        return null;
+      });
+    };
+
+    String DATA = "data";
+
+    long time = System.currentTimeMillis();
+    eventBus.sendRequest(requestEventDescriptor, DATA, 1, TimeUnit.SECONDS, (r, th) -> true, consumer);
+    time = System.currentTimeMillis() - time;
+    assertTime(time, delay);
+
+    assertNull(listReference.get());
+    assertNotNull(exceptionReference.get());
+    assertEquals("No response can be sent", exceptionReference.get().getMessage());
+  }
+
+  @Test
   public void test_sendRequest_waiting_1_response_on_2subscribe()
   {
     EventDescriptor<String> askEventDescriptor = new EventDescriptor<>("a/request", String.class);
@@ -236,7 +270,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -304,7 +338,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -373,7 +407,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -438,7 +472,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -492,6 +526,39 @@ public class EventBus_TestCase
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Test
+  public void test_postRequest_waiting_no_response()
+  {
+    EventDescriptor<String> askEventDescriptor = new EventDescriptor<>("a/request", String.class);
+    EventDescriptor<String> replyEventDescriptor = new EventDescriptor<>("a/reply", String.class);
+    RequestEventDescriptor<String, String> requestEventDescriptor = new RequestEventDescriptor<>(askEventDescriptor, replyEventDescriptor);
+
+    int delay = 20;
+
+    AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
+    AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
+    Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
+      cf.handle((list, th) -> {
+        if (list != null)
+          listReference.set(list);
+        else
+          exceptionReference.set(th);
+        return null;
+      });
+    };
+
+    String DATA = "data";
+
+    long time = System.currentTimeMillis();
+    eventBus.postRequest(requestEventDescriptor, DATA, 1, TimeUnit.SECONDS, (r, th) -> true, consumer);
+    time = System.currentTimeMillis() - time;
+    assertTime(time, delay);
+
+    assertNull(listReference.get());
+    assertNotNull(exceptionReference.get());
+    assertEquals("No response can be sent", exceptionReference.get().getMessage());
+  }
+
+  @Test
   public void test_postRequest_waiting_1_response_on_2subscribe()
   {
     EventDescriptor<String> askEventDescriptor = new EventDescriptor<>("a/request", String.class);
@@ -519,7 +586,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -593,7 +660,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -668,7 +735,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else
@@ -739,7 +806,7 @@ public class EventBus_TestCase
     AtomicReference<List<? extends String>> listReference = new AtomicReference<>();
     AtomicReference<Throwable> exceptionReference = new AtomicReference<>();
     Consumer<CompletableFuture<List<? extends String>>> consumer = cf -> {
-      cf = cf.handle((list, th) -> {
+      cf.handle((list, th) -> {
         if (list != null)
           listReference.set(list);
         else

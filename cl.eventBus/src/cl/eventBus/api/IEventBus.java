@@ -99,5 +99,8 @@ public interface IEventBus
     Consumer<CompletableFuture<List<? extends R>>> consumer);
 
   // just for debug
+  void debugCall();
+
+  // just for debug
   void dump();
 }

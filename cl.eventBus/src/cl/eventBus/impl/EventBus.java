@@ -3,13 +3,14 @@ package cl.eventBus.impl;
 import java.util.AbstractMap;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -49,8 +50,12 @@ public class EventBus implements IEventBus
   private final Map<Map.Entry<RequestEventDescriptor<?, ?>, Function<?, ?>>, EventHandler> requestEventDescriptorMap = new ConcurrentHashMap<>();
   private final Set<ReceiveResponsesConsumer<?>> responseConsumerSet = ConcurrentHashMap.newKeySet();
 
+  private boolean DEBUG = false;
+  private final static String COUNT_DOWN_LATCH_PROPERTY = "countDownLatch";
+
+  private static int THREAD_NUMBER = 0;
   private final ThreadFactory threadFactory = runnable -> {
-    Thread thread = new Thread(runnable);
+    Thread thread = new Thread(runnable, "EventBus Thread #" + THREAD_NUMBER++);
     thread.setDaemon(true);
     return thread;
   };
@@ -67,13 +72,16 @@ public class EventBus implements IEventBus
     // check
     checkSameEventTypeClass(eventDescriptor.getTopic(), eventDescriptor.getEventDescriptorClass());
 
+    if (DEBUG)
+      printDebug("SUBSCRIBE", eventDescriptor);
+
     Map.Entry<EventDescriptor<?>, Consumer<?>> entry = new AbstractMap.SimpleEntry<>(eventDescriptor, consumer);
     EventHandler eventHandler = eventDescriptorMap.get(entry);
     if (eventHandler == null)
     {
       eventHandler = event -> {
         Object eventData = event.getProperty(IEventBroker.DATA);
-        if (eventData == null || eventDescriptor.getEventDescriptorClass().isInstance(eventData))
+        if (acceptDataForEvent(eventData, eventDescriptor.getEventDescriptorClass()))
         {
           E data = eventDescriptor.getEventDescriptorClass().cast(eventData);
           //          consumer.accept(data);
@@ -84,9 +92,10 @@ public class EventBus implements IEventBus
             }
             finally
             {
-              CountDownLatch countDownLatch = (CountDownLatch) event.getProperty("countDownLatch");
-              if (countDownLatch != null)
-                countDownLatch.countDown();
+              Optional.ofNullable(event.getProperty(COUNT_DOWN_LATCH_PROPERTY))
+                .filter(CountDownLatch.class::isInstance)
+                .map(CountDownLatch.class::cast)
+                .ifPresent(CountDownLatch::countDown);
             }
           });
         }
@@ -112,14 +121,18 @@ public class EventBus implements IEventBus
     checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
     checkSameEventTypeClass(requestEventDescriptor.getReplyEventDescriptor().getTopic(), requestEventDescriptor.getReplyEventDescriptor().getEventDescriptorClass());
 
+    if (DEBUG)
+      printDebug("SUBSCRIBE", requestEventDescriptor);
+
     Map.Entry<RequestEventDescriptor<?, ?>, Function<?, ?>> entry = new AbstractMap.SimpleEntry<>(requestEventDescriptor, function);
     EventHandler eventHandler = requestEventDescriptorMap.get(entry);
     if (eventHandler == null)
     {
       eventHandler = event -> {
         Object eventData = event.getProperty(IEventBroker.DATA);
-        if (eventData == null || requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass().isInstance(eventData))
+        if (acceptDataForEvent(eventData, requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass()))
         {
+          @SuppressWarnings("unchecked")
           List<ReceiveResponsesConsumer<R>> responseConsumers = responseConsumerSet.stream()
             .filter(rc -> rc.requestEventDescriptor.equals(requestEventDescriptor))
             .map(rc -> (ReceiveResponsesConsumer<R>) rc)
@@ -169,6 +182,9 @@ public class EventBus implements IEventBus
     Objects.requireNonNull(eventDescriptor, "eventDescriptor is null");
     Objects.requireNonNull(consumer, "consumer is null");
 
+    if (DEBUG)
+      printDebug("UNSUBSCRIBE", eventDescriptor);
+
     Map.Entry<EventDescriptor<?>, Consumer<?>> entry = new AbstractMap.SimpleEntry<>(eventDescriptor, consumer);
     EventHandler eventHandler = eventDescriptorMap.remove(entry);
     if (eventHandler != null)
@@ -185,6 +201,9 @@ public class EventBus implements IEventBus
   {
     Objects.requireNonNull(requestEventDescriptor, "requestEventDescriptor is null");
     Objects.requireNonNull(function, "function is null");
+
+    if (DEBUG)
+      printDebug("UNSUBSCRIBE", requestEventDescriptor);
 
     Map.Entry<RequestEventDescriptor<?, ?>, Function<?, ?>> entry = new AbstractMap.SimpleEntry<>(requestEventDescriptor, function);
     EventHandler eventHandler = requestEventDescriptorMap.remove(entry);
@@ -213,6 +232,9 @@ public class EventBus implements IEventBus
     // check
     checkSameEventTypeClass(eventDescriptor.getTopic(), eventDescriptor.getEventDescriptorClass());
 
+    if (DEBUG)
+      printDebug("POST", eventDescriptor, data);
+
     eventBroker.post(eventDescriptor.getTopic(), data);
   }
 
@@ -224,8 +246,11 @@ public class EventBus implements IEventBus
     // check
     checkSameEventTypeClass(eventDescriptor.getTopic(), eventDescriptor.getEventDescriptorClass());
 
+    if (DEBUG)
+      printDebug("SEND", eventDescriptor, data);
+
     //
-    Set<String> set = new HashSet<>();
+    Set<String> set = new TreeSet<>();
     set.add("*");
     set.add(eventDescriptor.getTopic());
     final String[] splitted = eventDescriptor.getTopic().split("/");
@@ -239,7 +264,7 @@ public class EventBus implements IEventBus
 
     long total = eventDescriptorMap.keySet().stream()
       .map(Map.Entry::getKey)
-      .filter(ed -> set.contains(ed.getTopic()) && ed.getEventDescriptorClass().isInstance(data))
+      .filter(ed -> set.contains(ed.getTopic()) && acceptDataForEvent(data, ed.getEventDescriptorClass()))
       .count();
 
     CountDownLatch countDownLatch = new CountDownLatch((int) total);
@@ -247,7 +272,7 @@ public class EventBus implements IEventBus
     Map<String, Object> map = new HashMap<>();
     map.put(EventConstants.EVENT_TOPIC, eventDescriptor.getTopic());
     map.put(IEventBroker.DATA, data);
-    map.put("countDownLatch", countDownLatch);
+    map.put(COUNT_DOWN_LATCH_PROPERTY, countDownLatch);
     eventBroker.send(eventDescriptor.getTopic(), map);
 
     try
@@ -266,10 +291,19 @@ public class EventBus implements IEventBus
     BiPredicate<? super R, Throwable> stopIf,
     Consumer<CompletableFuture<List<? extends R>>> consumer)
   {
+    // check
+    checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
+    checkSameEventTypeClass(requestEventDescriptor.getReplyEventDescriptor().getTopic(), requestEventDescriptor.getReplyEventDescriptor().getEventDescriptorClass());
+
+    if (DEBUG)
+      printDebug("POST REQUEST", requestEventDescriptor, data, timeout, timeUnit);
+
     ReceiveResponsesConsumer<R> responseConsumer = new ReceiveResponsesConsumer<>(requestEventDescriptor, timeout, timeUnit, stopIf, consumer);
     responseConsumerSet.add(responseConsumer);
 
-    post(requestEventDescriptor.getRequestEventDescriptor(), data);
+    EventDescriptor<E> eventDescriptor = requestEventDescriptor.getRequestEventDescriptor();
+
+    eventBroker.post(eventDescriptor.getTopic(), data);
   }
 
   @Override
@@ -282,10 +316,12 @@ public class EventBus implements IEventBus
     checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
     checkSameEventTypeClass(requestEventDescriptor.getReplyEventDescriptor().getTopic(), requestEventDescriptor.getReplyEventDescriptor().getEventDescriptorClass());
 
+    if (DEBUG)
+      printDebug("SEND REQUEST", requestEventDescriptor, data, timeout, timeUnit);
+
     ReceiveResponsesConsumer<R> responseConsumer = new ReceiveResponsesConsumer<>(requestEventDescriptor, timeout, timeUnit, stopIf, consumer);
     responseConsumerSet.add(responseConsumer);
 
-    //    send(requestEventDescriptor.getRequestEventDescriptor(), data);
     eventBroker.send(requestEventDescriptor.getRequestEventDescriptor().getTopic(), data);
 
     // waiting
@@ -348,7 +384,8 @@ public class EventBus implements IEventBus
       //
       if (countResponseEventDescriptor == 0)
       {
-        resultsCompletableFuture.completeExceptionally(new RuntimeException("No response"));
+        waitingCompletableFuture.complete("");
+        resultsCompletableFuture.completeExceptionally(new RuntimeException("No response can be sent"));
         return;
       }
 
@@ -437,6 +474,49 @@ public class EventBus implements IEventBus
         waitingCompletableFuture.complete("");
       }
     }
+  }
+
+  private static boolean acceptDataForEvent(Object o, Class<?> clazz)
+  {
+    return o == null || Void.class.equals(clazz) || clazz.isInstance(o);
+  }
+
+  private static <E> void printDebug(String prefix, EventDescriptor<E> eventDescriptor, E data)
+  {
+    System.out.println(prefix + " eventDescriptor=" + eventDescriptor +
+      ", data=" + data +
+      ", call by=" + Thread.currentThread().getStackTrace()[3] +
+      ", thread=" + Thread.currentThread());
+  }
+
+  private static <E> void printDebug(String prefix, EventDescriptor<E> eventDescriptor)
+  {
+    System.out.println(prefix + " eventDescriptor=" + eventDescriptor +
+      ", call by=" + Thread.currentThread().getStackTrace()[3] +
+      ", thread=" + Thread.currentThread());
+  }
+
+  private static <E, R> void printDebug(String prefix, RequestEventDescriptor<E, R> requestEventDescriptor)
+  {
+    System.out.println(prefix + " requestEventDescriptor=" + requestEventDescriptor +
+      ", call by=" + Thread.currentThread().getStackTrace()[3] +
+      ", thread=" + Thread.currentThread());
+  }
+
+  private static <E, R> void printDebug(String prefix, RequestEventDescriptor<E, R> requestEventDescriptor, E data, long timeout, TimeUnit timeUnit)
+  {
+    System.out.println(prefix + " requestEventDescriptor=" + requestEventDescriptor +
+      ", data=" + data +
+      ", timeout=" + timeout +
+      ", timeUnit=" + timeUnit +
+      ", call by=" + Thread.currentThread().getStackTrace()[3] +
+      ", thread=" + Thread.currentThread());
+  }
+
+  @Override
+  public void debugCall()
+  {
+    DEBUG = true;
   }
 
   @Override
