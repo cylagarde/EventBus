@@ -2,7 +2,7 @@
 <feature
       id="cl.eventBus.features"
       label="Event bus"
-      version="1.1.0.qualifier"
+      version="1.2.0.qualifier"
       provider-name="CL">
 
    <description>
