@@ -7,7 +7,8 @@ Bundle-Activator: cl.eventBus.Activator
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.osgi.services,
  org.eclipse.e4.core.services,
- org.eclipse.e4.core.contexts
+ org.eclipse.e4.core.contexts,
+ org.eclipse.e4.ui.workbench
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Automatic-Module-Name: cl.eventBus
 Bundle-ActivationPolicy: lazy

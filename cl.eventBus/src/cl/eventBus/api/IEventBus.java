@@ -14,6 +14,13 @@ import java.util.stream.Stream;
 public interface IEventBus
 {
   /**
+   * Return all descriptors
+   */
+  Stream<EventDescriptor<?>> getEventDescriptors();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
    * Subscribe
    *
    * @param eventDescriptor
@@ -29,10 +36,7 @@ public interface IEventBus
    */
   <E> boolean unsubscribe(EventDescriptor<E> eventDescriptor, Consumer<? super E> consumer);
 
-  /**
-   * Return all descriptors
-   */
-  Stream<EventDescriptor<?>> getEventDescriptors();
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * Post a data
@@ -48,9 +52,19 @@ public interface IEventBus
    * @param eventDescriptor
    * @param data
    */
-  <E> void send(EventDescriptor<E> eventDescriptor, E data);
+  <E> void send(EventDescriptor<E> eventDescriptor, E data) throws EventException;
 
-  ////////////////////////////////
+  /**
+   * Send a data
+   *
+   * @param eventDescriptor
+   * @param data
+   * @param timeout
+   * @param timeUnit
+   */
+  <E> void send(EventDescriptor<E> eventDescriptor, E data, long timeout, TimeUnit timeUnit) throws EventException;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * Subscribe
@@ -67,6 +81,8 @@ public interface IEventBus
    * @param function
    */
   <E, R> boolean unsubscribe(RequestEventDescriptor<E, R> requestEventDescriptor, Function<? super E, ? extends R> function);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * Post an event and receive responses

@@ -1,6 +1,7 @@
 package cl.eventBus.impl;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -28,12 +29,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.e4.core.services.events.IEventBroker;
+import org.eclipse.e4.ui.workbench.UIEvents;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.event.EventConstants;
 import org.osgi.service.event.EventHandler;
 
 import cl.eventBus.api.EventDescriptor;
+import cl.eventBus.api.EventException;
 import cl.eventBus.api.IEventBus;
 import cl.eventBus.api.RequestEventDescriptor;
 
@@ -52,6 +55,7 @@ public class EventBus implements IEventBus
 
   private boolean DEBUG = false;
   private final static String COUNT_DOWN_LATCH_PROPERTY = "countDownLatch";
+  private final static String THROWABLE_LIST_PROPERTY = "throwableList";
 
   private static int THREAD_NUMBER = 0;
   private final ThreadFactory threadFactory = runnable -> {
@@ -89,6 +93,13 @@ public class EventBus implements IEventBus
             try
             {
               consumer.accept(data);
+            }
+            catch(Exception e)
+            {
+              Optional.ofNullable(event.getProperty(THROWABLE_LIST_PROPERTY))
+                .filter(List.class::isInstance)
+                .map(List.class::cast)
+                .ifPresent(list -> list.add(e));
             }
             finally
             {
@@ -176,6 +187,8 @@ public class EventBus implements IEventBus
     return false;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   @Override
   public <E> boolean unsubscribe(EventDescriptor<E> eventDescriptor, Consumer<? super E> consumer)
   {
@@ -216,6 +229,8 @@ public class EventBus implements IEventBus
     return false;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   @Override
   public Stream<EventDescriptor<?>> getEventDescriptors()
   {
@@ -223,6 +238,8 @@ public class EventBus implements IEventBus
     Stream<EventDescriptor<?>> stream2 = requestEventDescriptorMap.keySet().stream().map(Entry::getKey).map(RequestEventDescriptor::getRequestEventDescriptor);
     return Stream.concat(stream1, stream2).distinct().sorted(Comparator.comparing(Object::toString));
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Override
   public <E> void post(EventDescriptor<E> eventDescriptor, E data)
@@ -249,16 +266,37 @@ public class EventBus implements IEventBus
     if (DEBUG)
       printDebug("SEND", eventDescriptor, data);
 
-    //
+    sendImpl(eventDescriptor, data, Long.MAX_VALUE, TimeUnit.DAYS);
+  }
+
+  @Override
+  public <E> void send(EventDescriptor<E> eventDescriptor, E data, long timeout, TimeUnit timeUnit)
+  {
+    Objects.requireNonNull(eventDescriptor, "eventDescriptor is null");
+    if (timeout <= 0)
+      throw new IllegalArgumentException("timeout is <= 0");
+    Objects.requireNonNull(timeUnit, "timeUnit is null");
+
+    // check
+    checkSameEventTypeClass(eventDescriptor.getTopic(), eventDescriptor.getEventDescriptorClass());
+
+    if (DEBUG)
+      printDebug("SEND", eventDescriptor, data, timeout, timeUnit);
+
+    sendImpl(eventDescriptor, data, timeout, timeUnit);
+  }
+
+  private <E> void sendImpl(EventDescriptor<E> eventDescriptor, E data, long timeout, TimeUnit timeUnit)
+  {
     Set<String> set = new TreeSet<>();
-    set.add("*");
+    set.add(UIEvents.ALL_SUB_TOPICS);
     set.add(eventDescriptor.getTopic());
-    final String[] splitted = eventDescriptor.getTopic().split("/");
+    final String[] splitted = eventDescriptor.getTopic().split(UIEvents.TOPIC_SEP);
     final StringBuilder topicBuffer = new StringBuilder(eventDescriptor.getTopic().length());
     for(final String split : splitted)
     {
-      topicBuffer.append(split).append('/');
-      final String subscribedTopic = topicBuffer.toString() + '*';
+      topicBuffer.append(split).append(UIEvents.TOPIC_SEP);
+      final String subscribedTopic = topicBuffer.toString() + UIEvents.ALL_SUB_TOPICS;
       set.add(subscribedTopic);
     }
 
@@ -268,22 +306,34 @@ public class EventBus implements IEventBus
       .count();
 
     CountDownLatch countDownLatch = new CountDownLatch((int) total);
+    List<Exception> throwableList = new ArrayList<>();
 
     Map<String, Object> map = new HashMap<>();
     map.put(EventConstants.EVENT_TOPIC, eventDescriptor.getTopic());
     map.put(IEventBroker.DATA, data);
     map.put(COUNT_DOWN_LATCH_PROPERTY, countDownLatch);
+    map.put(THROWABLE_LIST_PROPERTY, throwableList);
     eventBroker.send(eventDescriptor.getTopic(), map);
 
     try
     {
-      countDownLatch.await();
+      boolean await = countDownLatch.await(timeout, timeUnit);
+      if (!await)
+      {
+        String message = "Timeout after " + timeout + " " + timeUnit.toString().toLowerCase();
+        throwableList.add(0, new TimeoutException(message));
+      }
     }
     catch(InterruptedException e)
     {
-      e.printStackTrace();
+      throwableList.add(e);
     }
+
+    if (!throwableList.isEmpty())
+      throw new EventException(throwableList);
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Override
   public <E, R> void postRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
@@ -291,6 +341,13 @@ public class EventBus implements IEventBus
     BiPredicate<? super R, Throwable> stopIf,
     Consumer<CompletableFuture<List<? extends R>>> consumer)
   {
+    Objects.requireNonNull(requestEventDescriptor, "requestEventDescriptor is null");
+    if (timeout <= 0)
+      throw new IllegalArgumentException("timeout is <= 0");
+    Objects.requireNonNull(timeUnit, "timeUnit is null");
+    Objects.requireNonNull(stopIf, "stopIf is null");
+    Objects.requireNonNull(consumer, "consumer is null");
+
     // check
     checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
     checkSameEventTypeClass(requestEventDescriptor.getReplyEventDescriptor().getTopic(), requestEventDescriptor.getReplyEventDescriptor().getEventDescriptorClass());
@@ -312,6 +369,13 @@ public class EventBus implements IEventBus
     BiPredicate<? super R, Throwable> stopIf,
     Consumer<CompletableFuture<List<? extends R>>> consumer)
   {
+    Objects.requireNonNull(requestEventDescriptor, "requestEventDescriptor is null");
+    if (timeout <= 0)
+      throw new IllegalArgumentException("timeout is <= 0");
+    Objects.requireNonNull(timeUnit, "timeUnit is null");
+    Objects.requireNonNull(stopIf, "stopIf is null");
+    Objects.requireNonNull(consumer, "consumer is null");
+
     // check
     checkSameEventTypeClass(requestEventDescriptor.getRequestEventDescriptor().getTopic(), requestEventDescriptor.getRequestEventDescriptor().getEventDescriptorClass());
     checkSameEventTypeClass(requestEventDescriptor.getReplyEventDescriptor().getTopic(), requestEventDescriptor.getReplyEventDescriptor().getEventDescriptorClass());
@@ -366,10 +430,6 @@ public class EventBus implements IEventBus
       BiPredicate<? super R, Throwable> stopIf,
       Consumer<CompletableFuture<List<? extends R>>> consumer)
     {
-      Objects.requireNonNull(requestEventDescriptor, "requestEventDescriptor is null");
-      Objects.requireNonNull(timeUnit, "timeUnit is null");
-      Objects.requireNonNull(stopIf, "stopIf is null");
-
       this.requestEventDescriptor = requestEventDescriptor;
       this.stopIf = stopIf;
       if (consumer != null)
@@ -485,6 +545,16 @@ public class EventBus implements IEventBus
   {
     System.out.println(prefix + " eventDescriptor=" + eventDescriptor +
       ", data=" + data +
+      ", call by=" + Thread.currentThread().getStackTrace()[3] +
+      ", thread=" + Thread.currentThread());
+  }
+
+  private static <E> void printDebug(String prefix, EventDescriptor<E> eventDescriptor, E data, long timeout, TimeUnit timeUnit)
+  {
+    System.out.println(prefix + " eventDescriptor=" + eventDescriptor +
+      ", data=" + data +
+      ", timeout=" + timeout +
+      ", timeUnit=" + timeUnit +
       ", call by=" + Thread.currentThread().getStackTrace()[3] +
       ", thread=" + Thread.currentThread());
   }
