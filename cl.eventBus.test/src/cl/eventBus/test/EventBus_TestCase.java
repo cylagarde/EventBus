@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 
 import cl.eventBus.api.EventDescriptor;
+import cl.eventBus.api.EventException;
 import cl.eventBus.api.IEventBus;
 import cl.eventBus.api.RequestEventDescriptor;
 
@@ -204,6 +206,42 @@ public class EventBus_TestCase
       assertTrue(eventBus.unsubscribe(eventDescriptor1, consumer1));
       assertTrue(eventBus.unsubscribe(eventDescriptor1, consumer2));
       assertTrue(eventBus.unsubscribe(eventDescriptor1, consumer3));
+    }
+  }
+
+  @Test
+  public void test_send_with_timeout()
+  {
+    EventDescriptor<String> eventDescriptor1 = new EventDescriptor<>("a/test", String.class);
+
+    int delay = 1000;
+
+    AtomicBoolean atomic1Boolean = new AtomicBoolean(false);
+    Consumer<String> consumer1 = txt -> {
+      pause(delay);
+      atomic1Boolean.set(true);
+    };
+
+    long timeout = 400;
+    TimeUnit timeUnit = TimeUnit.MILLISECONDS;
+
+    long time = System.currentTimeMillis();
+    try
+    {
+      assertTrue(eventBus.subscribe(eventDescriptor1, consumer1));
+
+      eventBus.send(eventDescriptor1, "data", timeout, timeUnit);
+      fail();
+    }
+    catch(EventException ee)
+    {
+      time = System.currentTimeMillis() - time;
+      assertTime(time, timeout);
+      assertFalse(atomic1Boolean.get());
+    }
+    finally
+    {
+      assertTrue(eventBus.unsubscribe(eventDescriptor1, consumer1));
     }
   }
 
@@ -612,7 +650,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      pause(delay + 50);
+      pause(delay + 20);
 
       // check
       String reply1 = reply1Reference.get();
@@ -685,7 +723,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      pause(delay + 50);
+      pause(delay + 20);
 
       // check
       String reply1 = reply1Reference.get();
@@ -760,7 +798,7 @@ public class EventBus_TestCase
       assertNull(reply2Reference.get());
       assertNull(listReference.get());
 
-      pause(delay + 50);
+      pause(delay + 20);
 
       // check
       List<?> list = listReference.get();
@@ -830,7 +868,7 @@ public class EventBus_TestCase
       assertNull(reply1Reference.get());
       assertNull(listReference.get());
 
-      pause(2 * delay + 50);
+      pause(2 * delay + 20);
 
       // check
       List<?> list = listReference.get();
@@ -847,7 +885,7 @@ public class EventBus_TestCase
       time = System.currentTimeMillis() - time;
       assertTime(time, 0);
 
-      pause(delay + 50);
+      pause(delay + 20);
 
       // check
       list = listReference.get();
@@ -864,8 +902,8 @@ public class EventBus_TestCase
     }
   }
 
-  private static void assertTime(long time, int maxDelay)
+  private static void assertTime(long time, long maxDelay)
   {
-    assertTrue("time=" + time + " must be < " + (maxDelay + 50), time < maxDelay + 50);
+    assertTrue("time=" + time + " must be < " + (maxDelay + 20), time < maxDelay + 20);
   }
 }

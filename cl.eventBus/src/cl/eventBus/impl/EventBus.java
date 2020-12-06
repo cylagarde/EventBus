@@ -67,6 +67,12 @@ public class EventBus implements IEventBus
   private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(threadFactory);
   private final ExecutorService executorService = Executors.newCachedThreadPool(threadFactory);
 
+  /**
+   * Subscribe
+   *
+   * @param eventDescriptor
+   * @param consumer
+   */
   @Override
   public <E> boolean subscribe(EventDescriptor<E> eventDescriptor, Consumer<? super E> consumer)
   {
@@ -122,6 +128,12 @@ public class EventBus implements IEventBus
     return false;
   }
 
+  /**
+   * Subscribe
+   *
+   * @param requestEventDescriptor
+   * @param function
+   */
   @Override
   public <E, R> boolean subscribe(RequestEventDescriptor<E, R> requestEventDescriptor, Function<? super E, ? extends R> function)
   {
@@ -189,6 +201,12 @@ public class EventBus implements IEventBus
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Unsubscribe
+   *
+   * @param eventDescriptor
+   * @param consumer
+   */
   @Override
   public <E> boolean unsubscribe(EventDescriptor<E> eventDescriptor, Consumer<? super E> consumer)
   {
@@ -209,6 +227,12 @@ public class EventBus implements IEventBus
     return false;
   }
 
+  /**
+   * Unsubscribe
+   *
+   * @param requestEventDescriptor
+   * @param function
+   */
   @Override
   public <E, R> boolean unsubscribe(RequestEventDescriptor<E, R> requestEventDescriptor, Function<? super E, ? extends R> function)
   {
@@ -231,6 +255,9 @@ public class EventBus implements IEventBus
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Get eventDescriptors
+   */
   @Override
   public Stream<EventDescriptor<?>> getEventDescriptors()
   {
@@ -241,6 +268,12 @@ public class EventBus implements IEventBus
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Post a data
+   *
+   * @param eventDescriptor
+   * @param data
+   */
   @Override
   public <E> void post(EventDescriptor<E> eventDescriptor, E data)
   {
@@ -255,6 +288,12 @@ public class EventBus implements IEventBus
     eventBroker.post(eventDescriptor.getTopic(), data);
   }
 
+  /**
+   * Send a data
+   *
+   * @param eventDescriptor
+   * @param data
+   */
   @Override
   public <E> void send(EventDescriptor<E> eventDescriptor, E data)
   {
@@ -269,6 +308,14 @@ public class EventBus implements IEventBus
     sendImpl(eventDescriptor, data, Long.MAX_VALUE, TimeUnit.DAYS);
   }
 
+  /**
+   * Send a data
+   *
+   * @param eventDescriptor
+   * @param data
+   * @param timeout
+   * @param timeUnit
+   */
   @Override
   public <E> void send(EventDescriptor<E> eventDescriptor, E data, long timeout, TimeUnit timeUnit)
   {
@@ -291,12 +338,12 @@ public class EventBus implements IEventBus
     Set<String> set = new TreeSet<>();
     set.add(UIEvents.ALL_SUB_TOPICS);
     set.add(eventDescriptor.getTopic());
-    final String[] splitted = eventDescriptor.getTopic().split(UIEvents.TOPIC_SEP);
-    final StringBuilder topicBuffer = new StringBuilder(eventDescriptor.getTopic().length());
+    String[] splitted = eventDescriptor.getTopic().split(UIEvents.TOPIC_SEP);
+    StringBuilder topicBuffer = new StringBuilder(eventDescriptor.getTopic().length());
     for(final String split : splitted)
     {
       topicBuffer.append(split).append(UIEvents.TOPIC_SEP);
-      final String subscribedTopic = topicBuffer.toString() + UIEvents.ALL_SUB_TOPICS;
+      String subscribedTopic = topicBuffer.toString() + UIEvents.ALL_SUB_TOPICS;
       set.add(subscribedTopic);
     }
 
@@ -335,6 +382,15 @@ public class EventBus implements IEventBus
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Post request
+   * @param requestEventDescriptor
+   * @param data
+   * @param timeout
+   * @param timeUnit
+   * @param stopIf
+   * @param consumer
+   */
   @Override
   public <E, R> void postRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
@@ -363,6 +419,15 @@ public class EventBus implements IEventBus
     eventBroker.post(eventDescriptor.getTopic(), data);
   }
 
+  /**
+   * Send request
+   * @param requestEventDescriptor
+   * @param data
+   * @param timeout
+   * @param timeUnit
+   * @param stopIf
+   * @param consumer
+   */
   @Override
   public <E, R> void sendRequest(RequestEventDescriptor<E, R> requestEventDescriptor, E data,
     long timeout, TimeUnit timeUnit,
