@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/cl.eventBus.features_1.2.0.qualifier.jar" id="cl.eventBus.features" version="1.2.0.qualifier">
+   <feature url="features/cl.eventBus.features_1.2.1.qualifier.jar" id="cl.eventBus.features" version="1.2.1.qualifier">
       <category name="Event bus"/>
    </feature>
    <category-def name="Event bus" label="Event bus">

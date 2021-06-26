@@ -4,9 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -15,9 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.eclipse.e4.core.contexts.EclipseContextFactory;
 import org.eclipse.e4.core.contexts.IEclipseContext;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.osgi.framework.Bundle;
@@ -46,6 +50,12 @@ public class EventBus_TestCase
     eventBus = eclipseCtx.get(IEventBus.class);
   }
 
+  @After
+  public void after()
+  {
+    assertEquals(0, eventBus.getEventDescriptors().count());
+  }
+
   static void pause(int delay)
   {
     try
@@ -62,8 +72,14 @@ public class EventBus_TestCase
   {
     EventDescriptor<String> eventDescriptor = new EventDescriptor<>("a/test", String.class);
 
+    EventDescriptor<Object> eventDescriptor2 = new EventDescriptor<>("a/test", Object.class);
+
     AtomicBoolean atomicBoolean = new AtomicBoolean(false);
+
+    AtomicReference<String> exceptionMessage = new AtomicReference<>();
     Consumer<String> consumer = txt -> {
+      if (exceptionMessage.get() != null)
+        throw new RuntimeException(exceptionMessage.get());
       pause(200);
       atomicBoolean.set(true);
     };
@@ -72,9 +88,20 @@ public class EventBus_TestCase
       assertTrue(eventBus.subscribe(eventDescriptor, consumer));
       assertFalse(eventBus.subscribe(eventDescriptor, consumer));
 
+      IllegalArgumentException topicIllegalArgumentException = assertThrows(IllegalArgumentException.class, () -> eventBus.send(eventDescriptor2, "data"));
+      assertEquals("Topic 'a/test' already subscribed with class 'java.lang.String' but use class 'java.lang.Object'", topicIllegalArgumentException.getMessage());
+
       eventBus.send(eventDescriptor, "data");
 
       assertTrue(atomicBoolean.get());
+
+      //
+      exceptionMessage.set("an excepton message");
+      EventException eventException = assertThrows(EventException.class, () -> eventBus.send(eventDescriptor, "data"));
+      Throwable[] suppressed = eventException.getSuppressed();
+      assertTrue(suppressed.length == 1);
+      assertTrue(suppressed[0] instanceof RuntimeException);
+      assertEquals(exceptionMessage.get(), suppressed[0].getMessage());
     }
     finally
     {
@@ -152,6 +179,8 @@ public class EventBus_TestCase
       assertTrue(atomic1Boolean.get());
       assertTrue(atomic2Boolean.get());
       assertTrue(atomic3Boolean.get());
+
+      assertTrue(Arrays.asList(eventDescriptor1, eventDescriptor2, eventDescriptor3).containsAll(eventBus.getEventDescriptors().collect(Collectors.toSet())));
     }
     finally
     {
@@ -270,6 +299,9 @@ public class EventBus_TestCase
 
     String DATA = "data";
 
+    IllegalArgumentException timeoutIllegalArgumentException = assertThrows(IllegalArgumentException.class, () -> eventBus.sendRequest(requestEventDescriptor, DATA, 0, TimeUnit.SECONDS, (r, th) -> true, consumer));
+    assertEquals("timeout is <= 0", timeoutIllegalArgumentException.getMessage());
+
     long time = System.currentTimeMillis();
     eventBus.sendRequest(requestEventDescriptor, DATA, 1, TimeUnit.SECONDS, (r, th) -> true, consumer);
     time = System.currentTimeMillis() - time;
@@ -339,6 +371,8 @@ public class EventBus_TestCase
       assertEquals(1, list.size());
       assertTrue(list.contains(reply1) || list.contains(reply2));
       assertNull(exceptionReference.get());
+
+      assertTrue(Arrays.asList(requestEventDescriptor.getRequestEventDescriptor()).containsAll(eventBus.getEventDescriptors().collect(Collectors.toSet())));
     }
     finally
     {
@@ -586,6 +620,7 @@ public class EventBus_TestCase
 
     String DATA = "data";
 
+    //
     long time = System.currentTimeMillis();
     eventBus.postRequest(requestEventDescriptor, DATA, 1, TimeUnit.SECONDS, (r, th) -> true, consumer);
     time = System.currentTimeMillis() - time;
@@ -602,6 +637,9 @@ public class EventBus_TestCase
     EventDescriptor<String> askEventDescriptor = new EventDescriptor<>("a/request", String.class);
     EventDescriptor<String> replyEventDescriptor = new EventDescriptor<>("a/reply", String.class);
     RequestEventDescriptor<String, String> requestEventDescriptor = new RequestEventDescriptor<>(askEventDescriptor, replyEventDescriptor);
+
+    EventDescriptor<Object> askEventDescriptor2 = new EventDescriptor<>("a/request", Object.class);
+    RequestEventDescriptor<Object, String> requestEventDescriptor2 = new RequestEventDescriptor<>(askEventDescriptor2, replyEventDescriptor);
 
     int delay = 200;
 
@@ -635,9 +673,32 @@ public class EventBus_TestCase
 
     String DATA = "data";
 
+    //
+    NullPointerException requestEventDescriptorNullPointerException = assertThrows(NullPointerException.class, () -> eventBus.postRequest(null, DATA, 10, TimeUnit.SECONDS, (r, th) -> true, consumer));
+    assertEquals("requestEventDescriptor is null", requestEventDescriptorNullPointerException.getMessage());
+
+    IllegalArgumentException timeoutIllegalArgumentException = assertThrows(IllegalArgumentException.class, () -> eventBus.postRequest(requestEventDescriptor, DATA, 0, TimeUnit.SECONDS, (r, th) -> true, consumer));
+    assertEquals("timeout is <= 0", timeoutIllegalArgumentException.getMessage());
+
+    NullPointerException timeUnitNullPointerException = assertThrows(NullPointerException.class, () -> eventBus.postRequest(requestEventDescriptor, DATA, 10, null, (r, th) -> true, consumer));
+    assertEquals("timeUnit is null", timeUnitNullPointerException.getMessage());
+
+    NullPointerException stopIfNullPointerException = assertThrows(NullPointerException.class, () -> eventBus.postRequest(requestEventDescriptor, DATA, 10, TimeUnit.SECONDS, null, consumer));
+    assertEquals("stopIf is null", stopIfNullPointerException.getMessage());
+
+    NullPointerException consumerNullPointerException = assertThrows(NullPointerException.class, () -> eventBus.postRequest(requestEventDescriptor, DATA, 10, TimeUnit.SECONDS, (r, th) -> true, null));
+    assertEquals("consumer is null", consumerNullPointerException.getMessage());
+
     try
     {
       assertTrue(eventBus.subscribe(requestEventDescriptor, function1));
+
+      NullPointerException functionNullPointerException = assertThrows(NullPointerException.class, () -> eventBus.subscribe(requestEventDescriptor, null));
+      assertEquals("function is null", functionNullPointerException.getMessage());
+
+      IllegalArgumentException topicIllegalArgumentException = assertThrows(IllegalArgumentException.class, () -> eventBus.subscribe(requestEventDescriptor2, o -> ""));
+      assertEquals("Topic 'a/request' already subscribed with class 'java.lang.String' but use class 'java.lang.Object'", topicIllegalArgumentException.getMessage());
+
       assertTrue(eventBus.subscribe(requestEventDescriptor, function2));
       assertFalse(eventBus.subscribe(requestEventDescriptor, function2));
 

@@ -340,7 +340,7 @@ public class EventBus implements IEventBus
     set.add(eventDescriptor.getTopic());
     String[] splitted = eventDescriptor.getTopic().split(UIEvents.TOPIC_SEP);
     StringBuilder topicBuffer = new StringBuilder(eventDescriptor.getTopic().length());
-    for(final String split : splitted)
+    for(String split : splitted)
     {
       topicBuffer.append(split).append(UIEvents.TOPIC_SEP);
       String subscribedTopic = topicBuffer.toString() + UIEvents.ALL_SUB_TOPICS;
@@ -465,13 +465,24 @@ public class EventBus implements IEventBus
   {
     eventDescriptorMap.forEach((entry, eventHandler) -> {
       EventDescriptor<?> eventDescriptor = entry.getKey();
-      if (eventDescriptor.getTopic().equals(topic))
-      {
-        Class<?> eventDescriptorClass = eventDescriptor.getEventDescriptorClass();
-        if (!eventDescriptorClass.equals(clazz))
-          throw new IllegalArgumentException("Topic '" + topic + "' already subscribed with class '" + eventDescriptorClass.getName() + "' but use class '" + clazz.getName() + "'");
-      }
+      checkSameEventTypeClass(topic, clazz, eventDescriptor);
     });
+
+    requestEventDescriptorMap.forEach((entry, eventHandler) -> {
+      RequestEventDescriptor<?, ?> requestEventDescriptor = entry.getKey();
+      checkSameEventTypeClass(topic, clazz, requestEventDescriptor.getRequestEventDescriptor());
+      checkSameEventTypeClass(topic, clazz, requestEventDescriptor.getReplyEventDescriptor());
+    });
+  }
+
+  private void checkSameEventTypeClass(String topic, Class<?> clazz, EventDescriptor<?> eventDescriptor)
+  {
+    if (eventDescriptor.getTopic().equals(topic))
+    {
+      Class<?> eventDescriptorClass = eventDescriptor.getEventDescriptorClass();
+      if (!eventDescriptorClass.equals(clazz))
+        throw new IllegalArgumentException("Topic '" + topic + "' already subscribed with class '" + eventDescriptorClass.getName() + "' but use class '" + clazz.getName() + "'");
+    }
   }
 
   /**
